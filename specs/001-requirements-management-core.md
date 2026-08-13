@@ -1,9 +1,9 @@
 # SPEC-001 — Requirements Management System: Core
 
 - **Status:** draft
-- **Version:** 0.4
+- **Version:** 0.5
 - **Created:** 2026-08-12
-- **Last updated:** 2026-08-12
+- **Last updated:** 2026-08-13
 - **Supersedes:** —
 - **Blocking questions:** none. One open item (Q17, team size / delivery date) affects sequencing only, not content.
 
@@ -48,6 +48,9 @@ increment.
 - **Approval workflow** — reviewers, sign-off, rejection with comments (decided, Q11)
 - **Data import from external tools** — there is no incumbent tool and no
   existing corpus to migrate (decided, Q15)
+- **A second database engine** — SQLite is the sole system of record for this
+  development phase; PostgreSQL support is deferred to a later spec (decided,
+  Q18 as revised; see §8.4)
 - Traceability links between requirements and code, tests, or issues
 - Baselines and versioned snapshots of a whole project
 - Formal document export (PDF/DOCX) and templating
@@ -524,64 +527,74 @@ does (§6) or how well it does it (§7).
 | **TR-STR-003** | Neither tree shall import source files from the other. | T |
 | **TR-STR-004** | Types shared across the boundary shall be generated from the OpenAPI description of TR-BE-005, and the generated output shall be reproducible from a committed command. | T |
 | **TR-STR-005** | Each tree shall produce its own container image. | I |
-| **TR-STR-006** | The two images, together with a database service where the active profile requires one (§8.4), shall be brought up by a single committed compose manifest (CON-002). | D |
+| **TR-STR-006** | The two images shall be brought up by a single committed compose manifest (CON-002), requiring no separate database service (§8.4). | D |
 | **TR-STR-007** | Either tree shall be replaceable by a different implementation satisfying the same API contract, without changes to the other. | I |
 
 *Rationale for §8.3: the separation is a hard boundary, not a folder
 convention. TR-STR-003 and TR-STR-004 are what keep it from eroding into a
 shared-code monolith the first time a type is convenient to reuse.*
 
-### 8.4 Database and environment profiles (decided, Q18)
+### 8.4 Database and environment profiles (decided, Q18 as revised 2026-08-13)
 
-The backend runs under two database profiles. Both are first-class: the local
-one is a real system of record for a real running system, not a mock or an
-in-memory stand-in.
+**SQLite is the sole database engine.** For this development phase the system
+runs on one engine and one engine only; PostgreSQL support is deferred to a
+later spec (§2.3).
 
-| Profile | Engine | Purpose |
-| ------- | ------ | ------- |
-| **local preview** | SQLite, one file on disk | Development and demonstration on a single machine, with no external service to install or run |
-| **deployed** | PostgreSQL | Any installation holding data anyone cares about |
+The backend still runs under two environment profiles. They no longer differ in
+what stores the data — both are SQLite — but in whether the installation is
+permitted to hold data anyone cares about, which is what §8.4.3 turns on.
+
+| Profile | Purpose |
+| ------- | ------- |
+| **local preview** | Development and demonstration on a single machine, with no external service to install or run |
+| **deployed** | Any installation holding data anyone cares about |
 
 | ID | Requirement | V |
 | -- | ----------- | - |
-| **TR-DB-001** | The backend shall support a local preview profile whose system of record is a single SQLite database file, requiring no external database service. | D |
+| **TR-DB-001** | The backend's system of record shall be a single SQLite database file, requiring no external database service under either profile. | D |
 | **TR-DB-002** | The local preview profile shall bring up a working system from a clean checkout with one documented command, creating and migrating its database automatically. | D |
-| **TR-DB-003** | The active engine shall be selected by deployment configuration alone — no code change, no conditional compilation, no separate build artifact. | I |
-| **TR-DB-004** | The backend shall reach the database only through a data-access layer, and no engine-specific SQL shall appear outside that layer. | I |
-| **TR-DB-005** | Every migration (NFR-MNT-006) shall apply to both engines from a single migration source. | T |
-| **TR-DB-006** | The full automated test suite shall pass against SQLite; the data-access and integration suites shall additionally run against PostgreSQL in CI. | T |
+| **TR-DB-003** | *Withdrawn (§8.4.4).* | — |
+| **TR-DB-004** | The backend shall reach the database only through a data-access layer, and no SQL shall appear outside that layer. | I |
+| **TR-DB-005** | Every migration (NFR-MNT-006) shall be applied from a single committed migration source. | T |
+| **TR-DB-006** | The full automated test suite shall pass against SQLite in CI. | T |
 | **TR-DB-007** | The local preview profile shall load a committed seed dataset on request, yielding a populated system suitable for demonstration. | D |
 | **TR-DB-008** | A system running under the local preview profile shall identify itself as such in its interface, so it cannot be mistaken for a deployed installation. | D |
-| **TR-DB-009** | The backend shall enable foreign-key enforcement on every SQLite connection, so that referential integrity behaves identically under both engines. | T |
+| **TR-DB-009** | The backend shall enable foreign-key enforcement on every SQLite connection, so that referential integrity is enforced by the database rather than by application code. | T |
 | **TR-DB-010** | The backend shall open SQLite in WAL mode with a busy timeout, so that a concurrent reader is never served a locking error. | T |
+| **TR-DB-014** | The database file location shall be selected by deployment configuration alone — no code change, no conditional compilation, no separate build artifact. | I |
+| **TR-DB-015** | SQLite-specific SQL shall be confined to the data-access layer of TR-DB-004, so that adding a second engine later touches no business logic. | I |
+
+*TR-DB-015 and §8.4.1 are the whole of what remains of the two-engine design:
+the portability work already done is kept, because it costs nothing to hold and
+is what makes the deferred PostgreSQL spec cheap to pick up. What is gone is
+the obligation to run, test, and operate a second engine now.*
 
 #### 8.4.1 Storage representations chosen for portability
 
-Picked so that the same value round-trips identically under both engines. These
-bind the physical representation only; §4 remains the domain model.
+Chosen so that no value depends on a type only SQLite has, and none would have
+to be rewritten to move the corpus to another engine. These bind the physical
+representation only; §4 remains the domain model.
 
 | Concept | Representation | Reason |
 | ------- | -------------- | ------ |
-| UUID | canonical lowercase hyphenated text | SQLite has no UUID type; text on both engines keeps values identical across a dump and restore |
-| Timestamp | ISO-8601 UTC string, millisecond precision | SQLite has no date type; UTC text sorts chronologically and removes per-engine timezone handling |
+| UUID | canonical lowercase hyphenated text | SQLite has no UUID type; text keeps values identical across a dump and restore, and is accepted verbatim by every engine |
+| Timestamp | ISO-8601 UTC string, millisecond precision | SQLite has no date type; UTC text sorts chronologically and removes timezone handling from the storage layer |
 | Boolean | integer 0/1 in storage, boolean in the domain | SQLite has no boolean type |
 | JSON (`snapshot`, `metadata`) | text containing JSON, parsed in the data-access layer | avoids depending on `jsonb` operators SQLite cannot express |
-| Email uniqueness | lowercased at the boundary before write, plain unique index | removes reliance on `citext` and `COLLATE NOCASE`, which differ between engines |
+| Email uniqueness | lowercased at the boundary before write, plain unique index | removes reliance on `citext` and `COLLATE NOCASE`, whose semantics are engine-specific |
 
-#### 8.4.2 Accepted divergence
-
-One requirement genuinely cannot be met by identical code on both engines.
+#### 8.4.2 Full-text search
 
 | ID | Requirement | V |
 | -- | ----------- | - |
-| **TR-DB-011** | Full-text search (FR-SRCH-005) shall be implemented with SQLite FTS5 under the local preview profile and with PostgreSQL full-text search under the deployed profile. | I |
-| **TR-DB-012** | Both implementations shall satisfy FR-SRCH-005 for whole-word matching over `title`, `statement`, and `rationale`; relevance ordering may differ between them, and no ranking equivalence is required. | T |
-| **TR-DB-013** | Any divergence beyond TR-DB-011 shall be confined to the data-access layer and recorded in this section. | I |
+| **TR-DB-011** | Full-text search (FR-SRCH-005) shall be implemented with SQLite FTS5. | I |
+| **TR-DB-012** | The implementation shall satisfy FR-SRCH-005 for whole-word matching over `title`, `statement`, and `rationale`; no relevance ranking is required, and ordering shall be applied by the caller. | T |
+| **TR-DB-013** | *Withdrawn (§8.4.4).* | — |
 
-*On write concurrency: SQLite serializes writers. That is acceptable under the
-local preview profile because no concurrency target is committed (§7.1). The
-optimistic concurrency control of FR-REQ-008 is unaffected either way — it is
-enforced by comparing `version`, not by engine-level locking.*
+*On write concurrency: SQLite serializes writers. That is acceptable here
+because no concurrency target is committed (§7.1). The optimistic concurrency
+control of FR-REQ-008 is unaffected — it is enforced by comparing `version`,
+not by engine-level locking.*
 
 #### 8.4.3 Requirements not applicable to the local preview profile
 
@@ -595,7 +608,20 @@ and do not apply to it:
 - **NFR-CMP-003** (12-month audit retention)
 
 TR-DB-008 exists precisely so this distinction is visible to anyone looking at
-a running system, rather than inferred from configuration.
+a running system, rather than inferred from configuration. It matters more now
+than it did when the two profiles ran different engines: nothing about the
+storage itself tells the two apart any more.
+
+#### 8.4.4 Withdrawn requirements
+
+Withdrawn by the SQLite-only decision of §8.4. The identifiers are retired, not
+recycled — a retired ID is never reissued, so a reference to it in a commit,
+test name, or older revision stays unambiguous.
+
+| ID | Was | Why withdrawn |
+| -- | --- | ------------- |
+| **TR-DB-003** | The active engine shall be selected by deployment configuration alone. | Vacuous with one engine. The part still worth requiring — configuration selecting the database location, one build artifact — is now TR-DB-014. |
+| **TR-DB-013** | Any divergence beyond TR-DB-011 shall be confined to the data-access layer and recorded in this section. | There is no second engine to diverge from. TR-DB-015 keeps the containment requirement it existed to enforce. |
 
 ## 9. Constraints
 
@@ -604,7 +630,7 @@ a running system, rather than inferred from configuration.
 | **CON-001** | The system shall be deployable on a single host by one administrator, without a dedicated operations team. | Q2 |
 | **CON-002** | The system shall be distributed as containers, deployable with a single compose-style manifest. | Q2 |
 | **CON-003** | The system shall depend on no managed cloud service that has no self-hosted substitute. | Q2 |
-| **CON-004** | The system shall use a single relational database as its system of record: SQLite under the local preview profile, PostgreSQL under the deployed profile. | §4, §8.4 |
+| **CON-004** | The system shall use a single relational database as its system of record: SQLite, under both profiles. | §4, §8.4 |
 | **CON-005** | The implementation stack is fixed: Node.js + TypeScript on the backend, React + TypeScript + Tailwind CSS on the frontend, in separate source trees. | Q16, §8 |
 | **CON-006** | *TODO — team size and target delivery date, which bound how much of §6 lands in one increment (Q17).* | — |
 
@@ -639,7 +665,7 @@ Questions resolved. Kept so the reasoning is not re-litigated.
 | Q14 | Performance and capacity targets | **Dismissed for the MVP.** No timing, load, or corpus-size target is committed (§7.1) |
 | Q15 | Data import | **Not needed.** No incumbent tool, no existing corpus (§2.3, §10) |
 | Q16 | Technology stack | **Node.js + TypeScript backend, React + TypeScript + Tailwind frontend, separate source trees** (§8, CON-005) |
-| Q18 | Database engine | **SQLite for local preview, PostgreSQL when deployed**, selected by configuration alone (§8.4, CON-004) |
+| Q18 | Database engine | **SQLite only**, under both profiles (§8.4, CON-004). *Revised 2026-08-13: the original decision was SQLite for local preview and PostgreSQL when deployed, selected by configuration alone. PostgreSQL is deferred to a later spec (§2.3) so this development phase carries one engine to run, test, and operate. The portability constraints it motivated (§8.4.1, TR-DB-015) are retained deliberately, so reinstating it is a spec and a dialect, not a data migration.* |
 
 ## 12. Acceptance criteria for this increment
 
@@ -666,13 +692,13 @@ Satisfied when all of the following hold:
 - [ ] Every update writes a revision; any two revisions can be diffed; a revert produces a new revision rather than removing one.
 - [ ] The audit log records every event type in §4.10 and offers no mutation path.
 - [ ] `backend/` and `frontend/` each build, lint, and test on their own, with no source import across the boundary (TR-STR-002, TR-STR-003).
-- [ ] The compose manifest brings up backend, frontend, and database from a clean checkout (TR-STR-006).
+- [ ] The compose manifest brings up backend and frontend from a clean checkout, with no database service (TR-STR-006).
 - [ ] A clean checkout yields a running system on SQLite with one command, with no database service installed or running (TR-DB-001, TR-DB-002).
-- [ ] Switching to PostgreSQL requires only a configuration change, with the same build artifact (TR-DB-003).
-- [ ] The single migration source applies cleanly to both SQLite and PostgreSQL (TR-DB-005).
-- [ ] The full test suite passes against SQLite, and the data-access suite passes against PostgreSQL (TR-DB-006).
-- [ ] Full-text search returns a requirement by a word from its statement under both engines (FR-SRCH-005, TR-DB-012).
-- [ ] A foreign-key violation is rejected identically under both engines (TR-DB-009).
+- [ ] Moving the database file requires only a configuration change, with the same build artifact (TR-DB-014).
+- [ ] The single migration source applies cleanly from empty, and every migration rolls back (TR-DB-005, NFR-MNT-006).
+- [ ] The full test suite passes against SQLite (TR-DB-006).
+- [ ] Full-text search returns a requirement by a word from its statement (FR-SRCH-005, TR-DB-012).
+- [ ] A foreign-key violation is rejected by the database, on a fresh connection (TR-DB-009).
 - [ ] The seed dataset loads and the local preview identifies itself as a preview (TR-DB-007, TR-DB-008).
 - [ ] The OpenAPI description matches the implementation, and the frontend's API types regenerate from it without manual edit (TR-BE-005, TR-STR-004).
 - [ ] Every **T**-marked requirement in §6 and §8 maps to a named automated test.

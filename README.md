@@ -2,7 +2,7 @@
 
 A requirements management system, built to its own specification:
 [`specs/001-requirements-management-core.md`](specs/001-requirements-management-core.md)
-(SPEC-001 v0.4).
+(SPEC-001 v0.5).
 
 Requirements carry stable keys, a category hierarchy, tags, decomposition,
 immutable revisions, and an append-only audit log — behind per-project roles.
@@ -34,17 +34,15 @@ Seeded accounts, all with the password `preview-passphrase-2026`:
 
 ### With containers
 
-One manifest brings up both images, and a database service only where the
-profile needs one (TR-STR-006):
+One manifest brings up both images. There is no database service to bring up
+(TR-STR-006):
 
 ```bash
-docker compose up --build                     # local preview, SQLite → :8080
-docker compose --profile postgres up --build  # deployed shape, PostgreSQL
+docker compose up --build   # → :8080
 ```
 
-For the PostgreSQL variant, set `APP_PROFILE=deployed`, `DB_ENGINE=postgres`,
-and a real `SESSION_SECRET` (the backend refuses to start without one under the
-deployed profile).
+For the deployed profile, set `APP_PROFILE=deployed` and a real
+`SESSION_SECRET` (the backend refuses to start without one under that profile).
 
 ## Layout
 
@@ -67,34 +65,36 @@ cd backend  && npm run openapi   # writes backend/openapi.json
 cd frontend && npm run gen:api   # writes frontend/src/api/schema.d.ts
 ```
 
-## Two database engines
+## The database
 
-The engine is chosen by configuration alone — same code, same build artifact
-(TR-DB-003):
+**SQLite, and only SQLite** (CON-004). PostgreSQL support was in SPEC-001 v0.4
+and is deferred to a later spec (§2.3) — for this development phase there is one
+engine to run, test, and operate. Full-text search is FTS5 (TR-DB-011).
 
-| Profile         | Engine     | For                                    |
-| --------------- | ---------- | -------------------------------------- |
-| `local-preview` | SQLite     | development and demonstration, one file |
-| `deployed`      | PostgreSQL | anything holding data anyone cares about |
+Two *profiles* remain, and they no longer differ in what stores the data:
+
+| Profile         | For                                       |
+| --------------- | ----------------------------------------- |
+| `local-preview` | development and demonstration             |
+| `deployed`      | anything holding data anyone cares about  |
 
 The local preview announces itself in the UI (TR-DB-008) and is exempt from the
 deployed profile's TLS, encryption-at-rest, backup, and retention requirements
-(§8.4.3). It must not hold real data.
+(§8.4.3). It must not hold real data. Since storage no longer tells the two
+apart, that banner is the only thing that does.
 
-Portability decisions that are painful to reverse live in §8.4.1: UUIDs as
-canonical text, timestamps as ISO-8601 UTC text, booleans as 0/1, JSON as text,
-and email uniqueness by lowercasing at the boundary rather than `citext`.
-
-**Full-text search is the one accepted divergence** (TR-DB-011): FTS5 on SQLite,
-`tsvector` on PostgreSQL. Whole-word matching is equivalent; relevance ordering
-is explicitly not.
+The portability decisions of §8.4.1 are kept deliberately, not by inertia:
+UUIDs as canonical text, timestamps as ISO-8601 UTC text, booleans as 0/1, JSON
+as text, and email uniqueness by lowercasing at the boundary rather than
+`citext`. Nothing stored depends on a type only SQLite has, so picking
+PostgreSQL back up is a dialect and a search index (TR-DB-015), not a data
+migration.
 
 ## Tests
 
 ```bash
 cd backend
-npm test         # whole suite on SQLite
-npm run test:pg  # data-access suite on PostgreSQL (needs DATABASE_URL)
+npm test
 npm run lint
 npm run typecheck
 ```

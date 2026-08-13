@@ -1,16 +1,20 @@
 /**
- * TR-DB-003: the active engine and profile are selected by configuration alone.
- * Nothing below is compiled in, so one build artifact serves both profiles.
+ * TR-DB-014: the profile and the database file location are selected by
+ * configuration alone. Nothing below is compiled in, so one build artifact
+ * serves both profiles.
  */
 
-export type DbEngine = 'sqlite' | 'postgres';
 export type AppProfile = 'local-preview' | 'deployed';
+
+/**
+ * CON-004: SQLite is the only engine. Reported by /api/meta and /health rather
+ * than inferred, so a running system still names its own storage.
+ */
+export const DB_ENGINE = 'sqlite' as const;
 
 export interface Config {
   readonly profile: AppProfile;
-  readonly engine: DbEngine;
   readonly sqliteFile: string;
-  readonly databaseUrl: string | undefined;
   readonly port: number;
   readonly host: string;
   readonly sessionSecret: string;
@@ -30,15 +34,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     throw new ConfigError(`APP_PROFILE must be 'local-preview' or 'deployed', got '${profile}'`);
   }
 
-  const engine = (env.DB_ENGINE ?? (profile === 'deployed' ? 'postgres' : 'sqlite')) as DbEngine;
-  if (engine !== 'sqlite' && engine !== 'postgres') {
-    throw new ConfigError(`DB_ENGINE must be 'sqlite' or 'postgres', got '${engine}'`);
-  }
-
-  if (engine === 'postgres' && !env.DATABASE_URL) {
-    throw new ConfigError('DATABASE_URL is required when DB_ENGINE=postgres');
-  }
-
   // §8.4.3 draws the line: the preview profile is exempt from the deployed
   // profile's obligations precisely because it must never hold real data.
   let sessionSecret = env.SESSION_SECRET ?? '';
@@ -54,9 +49,7 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
 
   return {
     profile,
-    engine,
     sqliteFile: env.SQLITE_FILE ?? './data/sddfreak.db',
-    databaseUrl: env.DATABASE_URL,
     port: Number(env.PORT ?? 3000),
     host: env.HOST ?? '0.0.0.0',
     sessionSecret,

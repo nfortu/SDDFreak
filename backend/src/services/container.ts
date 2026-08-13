@@ -38,7 +38,7 @@ export function createServices(
 ): Services {
   const audit = new AuditService(db);
   const authz = new AuthorizationService(db, audit);
-  const searchIndex = new SearchIndex(config.engine, db);
+  const searchIndex = new SearchIndex(db);
   const tags = new TagsService(db, authz);
   const categories = new CategoriesService(db, authz);
   const requirements = new RequirementsService(db, authz, tags, searchIndex);

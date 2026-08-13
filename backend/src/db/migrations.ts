@@ -1,6 +1,5 @@
 import { type Kysely, sql } from 'kysely';
 import type { Migration } from 'kysely/migration';
-import type { DbEngine } from '../config.js';
 
 /**
  * Migrations run against a schema that changes as they go, so Kysely types
@@ -11,17 +10,16 @@ import type { DbEngine } from '../config.js';
 type MigrationDb = Kysely<any>;
 
 /**
- * TR-DB-005: one migration source applies to both engines.
+ * TR-DB-005: one committed migration source, applied in order.
  *
- * The schema builder emits portable DDL, so almost nothing here branches. The
- * single exception is the search index (TR-DB-011), which cannot be expressed
- * identically on FTS5 and tsvector — that divergence is confined to migration
- * 002 and to `search.ts` in the data-access layer, as TR-DB-013 requires.
+ * The schema builder emits portable DDL (§8.4.1), so the only SQLite-specific
+ * statement in the file is the FTS5 table of migration 002 (TR-DB-011), which
+ * TR-DB-015 keeps confined to the data-access layer.
  */
-export function createMigrations(engine: DbEngine): Record<string, Migration> {
+export function createMigrations(): Record<string, Migration> {
   return {
     '001_initial_schema': initialSchema,
-    '002_search_index': searchIndex(engine),
+    '002_search_index': searchIndex,
   };
 }
 
@@ -121,7 +119,7 @@ const initialSchema: Migration = {
       .columns(['project_id', 'parent_id'])
       .execute();
     // FR-ORG-004. A plain unique index would not catch duplicate roots, because
-    // both engines treat NULLs as distinct — hence the two partial indexes.
+    // SQL treats NULLs as distinct — hence the two partial indexes.
     // The service enforces this too; these make the database agree.
     await sql`create unique index categories_sibling_name_idx
       on categories (project_id, parent_id, name) where parent_id is not null`.execute(db);
@@ -266,38 +264,21 @@ const initialSchema: Migration = {
 };
 
 /**
- * TR-DB-011: the accepted divergence. Both shapes expose the same four columns,
- * so only the WHERE clause differs at query time (see `search.ts`).
+ * TR-DB-011: full-text search is FTS5. The virtual table exposes the same four
+ * columns the data-access layer writes; matching happens in `search-index.ts`.
  */
-function searchIndex(engine: DbEngine): Migration {
-  return {
-    async up(db: MigrationDb): Promise<void> {
-      if (engine === 'sqlite') {
-        await sql`create virtual table requirement_search using fts5(
-          requirement_id unindexed,
-          title,
-          statement,
-          rationale,
-          tokenize='unicode61'
-        )`.execute(db);
-      } else {
-        await sql`create table requirement_search (
-          requirement_id text primary key references requirements(id) on delete cascade,
-          title text not null default '',
-          statement text not null default '',
-          rationale text not null default '',
-          search_vector tsvector generated always as (
-            to_tsvector('english',
-              coalesce(title, '') || ' ' || coalesce(statement, '') || ' ' || coalesce(rationale, ''))
-          ) stored
-        )`.execute(db);
-        await sql`create index requirement_search_vector_idx
-          on requirement_search using gin (search_vector)`.execute(db);
-      }
-    },
+const searchIndex: Migration = {
+  async up(db: MigrationDb): Promise<void> {
+    await sql`create virtual table requirement_search using fts5(
+      requirement_id unindexed,
+      title,
+      statement,
+      rationale,
+      tokenize='unicode61'
+    )`.execute(db);
+  },
 
-    async down(db: MigrationDb): Promise<void> {
-      await sql`drop table if exists requirement_search`.execute(db);
-    },
-  };
-}
+  async down(db: MigrationDb): Promise<void> {
+    await sql`drop table if exists requirement_search`.execute(db);
+  },
+};

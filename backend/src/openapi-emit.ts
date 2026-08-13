@@ -10,9 +10,9 @@ import { createServices } from './services/container.js';
  * definitions, and the frontend's types are generated from this file. Both
  * sides therefore move together or the generation step fails.
  */
-const config = { ...loadConfig(), engine: 'sqlite' as const, sqliteFile: ':memory:' };
+const config = { ...loadConfig(), sqliteFile: ':memory:' };
 const handle = createSqliteDb(':memory:');
-await migrateToLatest(handle.db, 'sqlite');
+await migrateToLatest(handle.db);
 
 const app = await buildApp(config, createServices(config, handle.db));
 await app.ready();

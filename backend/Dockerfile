@@ -18,7 +18,7 @@ RUN npm ci --omit=dev --ignore-scripts=false && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 
-# The preview profile keeps its SQLite file here; mount a volume to keep it.
+# The system of record (TR-DB-001) lives here; mount a volume to keep it.
 RUN mkdir -p /app/data && chown -R node:node /app/data
 USER node
 

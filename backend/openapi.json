@@ -728,19 +728,9 @@
                       "type": "boolean"
                     },
                     "engine": {
-                      "anyOf": [
-                        {
-                          "type": "string",
-                          "enum": [
-                            "sqlite"
-                          ]
-                        },
-                        {
-                          "type": "string",
-                          "enum": [
-                            "postgres"
-                          ]
-                        }
+                      "type": "string",
+                      "enum": [
+                        "sqlite"
                       ]
                     },
                     "spec": {

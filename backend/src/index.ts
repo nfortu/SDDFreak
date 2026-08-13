@@ -1,4 +1,4 @@
-import { loadConfig } from './config.js';
+import { DB_ENGINE, loadConfig } from './config.js';
 import { createDb } from './db/connection.js';
 import { migrateToLatest } from './db/migrator.js';
 import { buildApp } from './http/app.js';
@@ -9,30 +9,12 @@ const config = loadConfig();
 const handle = createDb(config);
 
 /**
- * TR-DB-002: the local preview creates and migrates its own database, so a
- * clean checkout needs no setup step of its own.
- *
- * Under the deployed profile the database is a separate container that may
- * still be starting, so the first connection is retried rather than fatal.
+ * TR-DB-002: the system creates and migrates its own database, so a clean
+ * checkout needs no setup step of its own. The file is local and opened by
+ * this process (TR-DB-001), so there is no service to wait for — a failure
+ * here is a real failure and stops startup.
  */
-async function migrateWithRetry(attempts = 10, delayMs = 1500): Promise<void> {
-  for (let attempt = 1; ; attempt += 1) {
-    try {
-      await migrateToLatest(handle.db, handle.engine);
-      return;
-    } catch (error) {
-      if (attempt >= attempts) throw error;
-      console.warn(
-        `Database not ready (attempt ${attempt}/${attempts}): ${
-          error instanceof Error ? error.message : String(error)
-        }`,
-      );
-      await new Promise((resolve) => setTimeout(resolve, delayMs));
-    }
-  }
-}
-
-await migrateWithRetry();
+await migrateToLatest(handle.db);
 
 const services = createServices(config, handle.db, new ConsoleMailer());
 const app = await buildApp(config, services);
@@ -50,7 +32,7 @@ process.on('SIGTERM', () => void shutdown('SIGTERM'));
 try {
   await app.listen({ port: config.port, host: config.host });
   app.log.info(
-    `SDDFreak backend ready — profile=${config.profile} engine=${config.engine}`,
+    `SDDFreak backend ready — profile=${config.profile} engine=${DB_ENGINE} db=${config.sqliteFile}`,
   );
 } catch (error) {
   app.log.error(error);

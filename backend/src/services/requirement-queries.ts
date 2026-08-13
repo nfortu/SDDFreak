@@ -64,8 +64,8 @@ export interface TreeCategory {
 }
 
 /**
- * Logical rather than alphabetical ordering. Written as a CASE so the two
- * engines agree without either of them needing an enum type.
+ * Logical rather than alphabetical ordering. Written as a CASE, which needs no
+ * enum type in the schema (§8.4.1).
  */
 const PRIORITY_RANK = sql<number>`case priority
   when 'must' then 0 when 'should' then 1 when 'could' then 2 when 'wont' then 3 else 4 end`;
@@ -177,8 +177,7 @@ export class RequirementQueryService {
     switch (field) {
       case 'key':
         // Keys share a project prefix, so ordering by length first puts PRJ-2
-        // ahead of PRJ-10 without a numeric cast either engine might read
-        // differently.
+        // ahead of PRJ-10 without a numeric cast over a text column.
         return query
           .orderBy(sql`length(key)`, direction)
           .orderBy('key', direction);

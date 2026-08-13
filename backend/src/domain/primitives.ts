@@ -1,8 +1,8 @@
 import { randomUUID, randomBytes, createHash } from 'node:crypto';
 
 /**
- * §8.4.1: UUIDs are canonical lowercase hyphenated text under both engines, so
- * a value survives a dump and restore byte-for-byte.
+ * §8.4.1: UUIDs are canonical lowercase hyphenated text, so a value survives a
+ * dump and restore byte-for-byte.
  */
 export function newId(): string {
   return randomUUID();
@@ -10,7 +10,7 @@ export function newId(): string {
 
 /**
  * §8.4.1: timestamps are ISO-8601 UTC with millisecond precision. Text in UTC
- * sorts chronologically, which keeps ORDER BY identical on SQLite and Postgres.
+ * sorts chronologically, so ORDER BY needs no date type under it.
  */
 export function nowIso(): string {
   return new Date().toISOString();
@@ -32,7 +32,8 @@ export const fromDbBool = (value: number | boolean | null): boolean =>
 
 /**
  * §8.4.1: email uniqueness is a plain unique index over a value normalized at
- * the boundary, rather than citext or COLLATE NOCASE, which differ per engine.
+ * the boundary, rather than citext or COLLATE NOCASE, whose semantics are
+ * engine-specific.
  */
 export function normalizeEmail(email: string): string {
   return email.trim().toLowerCase();

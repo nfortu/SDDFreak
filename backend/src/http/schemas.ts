@@ -216,7 +216,8 @@ export const MetaSchema = Type.Object({
   /** TR-DB-008: the running system says which profile it is. */
   profile: Type.Union([Type.Literal('local-preview'), Type.Literal('deployed')]),
   isPreview: Type.Boolean(),
-  engine: Type.Union([Type.Literal('sqlite'), Type.Literal('postgres')]),
+  /** CON-004: one engine, but still reported rather than assumed by clients. */
+  engine: Type.Literal('sqlite'),
   spec: Type.String(),
 });
 

@@ -1,11 +1,12 @@
-# TR-STR-006: one committed manifest brings up both images, and a database
-# service where the active profile requires one (§8.4).
+# TR-STR-006: one committed manifest brings up both images. There is no
+# database service to bring up — SQLite is a file the backend opens itself
+# (TR-DB-001, CON-004).
 #
-#   docker compose up --build                      → local preview, SQLite, no db service
-#   docker compose --profile postgres up --build   → deployed shape, PostgreSQL
+#   docker compose up --build                        → local preview
+#   APP_PROFILE=deployed SESSION_SECRET=… docker compose up --build
 #
 # The backend image is identical either way. Only configuration changes
-# (TR-DB-003).
+# (TR-DB-014).
 
 name: sddfreak
 
@@ -14,9 +15,7 @@ services:
     build: ./backend
     environment:
       APP_PROFILE: ${APP_PROFILE:-local-preview}
-      DB_ENGINE: ${DB_ENGINE:-sqlite}
-      SQLITE_FILE: /app/data/sddfreak.db
-      DATABASE_URL: ${DATABASE_URL:-postgres://sddfreak:sddfreak@db:5432/sddfreak}
+      SQLITE_FILE: ${SQLITE_FILE:-/app/data/sddfreak.db}
       SESSION_SECRET: ${SESSION_SECRET:-}
       CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
       PORT: 3000
@@ -46,25 +45,7 @@ services:
       backend:
         condition: service_healthy
 
-  # Only started under the postgres profile; the local preview needs no
-  # external database service at all (TR-DB-001).
-  db:
-    image: postgres:17-alpine
-    profiles: [postgres]
-    environment:
-      POSTGRES_USER: sddfreak
-      POSTGRES_PASSWORD: sddfreak
-      POSTGRES_DB: sddfreak
-    volumes:
-      - postgres-data:/var/lib/postgresql/data
-    ports:
-      - '5432:5432'
-    healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U sddfreak']
-      interval: 5s
-      timeout: 3s
-      retries: 10
-
 volumes:
+  # The system of record. Named rather than bind-mounted so `compose down`
+  # keeps it and `compose down -v` is the deliberate way to discard it.
   backend-data:
-  postgres-data:

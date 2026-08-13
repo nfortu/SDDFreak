@@ -1,19 +1,12 @@
 import type { FastifyInstance, InjectOptions } from 'fastify';
 import { loadConfig, type Config } from '../src/config.js';
-import { createPostgresDb, createSqliteDb, type DbHandle } from '../src/db/connection.js';
+import { createSqliteDb, type DbHandle } from '../src/db/connection.js';
 import { migrateToLatest } from '../src/db/migrator.js';
 import { buildApp } from '../src/http/app.js';
 import { createServices, type Services } from '../src/services/container.js';
 import { ConsoleMailer } from '../src/services/mailer.js';
 
 process.env.NODE_ENV = 'test';
-
-/**
- * TR-DB-006: the whole suite runs against SQLite by default, and the
- * data-access suite runs again with DB_ENGINE=postgres in CI. Nothing in the
- * tests knows which engine is underneath.
- */
-export const TEST_ENGINE = (process.env.DB_ENGINE ?? 'sqlite') as 'sqlite' | 'postgres';
 
 export interface TestContext {
   app: FastifyInstance;
@@ -23,36 +16,18 @@ export interface TestContext {
   close(): Promise<void>;
 }
 
-let schemaCounter = 0;
-
 export async function createTestContext(): Promise<TestContext> {
-  const base = loadConfig({
+  const config = loadConfig({
     APP_PROFILE: 'local-preview',
-    DB_ENGINE: TEST_ENGINE,
     SESSION_SECRET: 'test-secret-that-is-definitely-long-enough-000000',
     CORS_ORIGIN: 'http://localhost:5173',
   });
 
-  let handle: DbHandle;
-  if (TEST_ENGINE === 'postgres') {
-    const url = process.env.DATABASE_URL;
-    if (!url) throw new Error('DATABASE_URL is required to run the suite against Postgres');
-
-    // Each context gets its own schema, so parallel suites cannot see each
-    // other's rows. SQLite gets the same isolation for free from :memory:.
-    const schema = `test_${process.pid}_${++schemaCounter}`;
-    const admin = createPostgresDb(url);
-    await admin.db.schema.createSchema(schema).ifNotExists().execute();
-    await admin.close();
-
-    const separator = url.includes('?') ? '&' : '?';
-    handle = createPostgresDb(`${url}${separator}options=-c%20search_path%3D${schema}`);
-  } else {
-    handle = createSqliteDb(':memory:');
-  }
-
-  const config: Config = { ...base, engine: handle.engine };
-  await migrateToLatest(handle.db, handle.engine);
+  // TR-DB-006: the suite runs on the same engine the system runs on. Each
+  // context gets its own :memory: database, so parallel suites cannot see each
+  // other's rows.
+  const handle = createSqliteDb(':memory:');
+  await migrateToLatest(handle.db);
 
   const services = createServices(config, handle.db, new ConsoleMailer(() => {}));
   const app = await buildApp(config, services);
