@@ -53,7 +53,7 @@ export interface TreeCategory {
 export interface Meta {
   profile: 'local-preview' | 'deployed';
   isPreview: boolean;
-  engine: 'sqlite' | 'postgres';
+  engine: 'sqlite';
   spec: string;
 }
 

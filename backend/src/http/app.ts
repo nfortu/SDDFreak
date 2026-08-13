@@ -7,7 +7,7 @@ import { Ajv } from 'ajv';
 import ajvFormats from 'ajv-formats';
 import Fastify, { type FastifyInstance } from 'fastify';
 import { randomUUID } from 'node:crypto';
-import type { Config } from '../config.js';
+import { DB_ENGINE, type Config } from '../config.js';
 import type { Services } from '../services/container.js';
 import { registerAuthentication, registerErrorHandler } from './plugins.js';
 import { adminRoutes } from './routes/admin.js';
@@ -116,7 +116,7 @@ export async function buildApp(config: Config, services: Services): Promise<Fast
 
       return reply.status(healthy ? 200 : 503).send({
         status: healthy ? 'ok' : 'degraded',
-        engine: config.engine,
+        engine: DB_ENGINE,
         profile: config.profile,
         checks,
       });
@@ -130,8 +130,8 @@ export async function buildApp(config: Config, services: Services): Promise<Fast
     async () => ({
       profile: config.profile,
       isPreview: config.isPreview,
-      engine: config.engine,
-      spec: 'SPEC-001 v0.4',
+      engine: DB_ENGINE,
+      spec: 'SPEC-001 v0.5',
     }),
   );
 

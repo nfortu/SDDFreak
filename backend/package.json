@@ -16,7 +16,6 @@
     "openapi": "tsx src/openapi-emit.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:pg": "DB_ENGINE=postgres vitest run test/data-access",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src test"
   },
@@ -31,14 +30,12 @@
     "ajv-formats": "^3.0.1",
     "better-sqlite3": "^11.8.1",
     "fastify": "^5.2.1",
-    "kysely": "^0.29.5",
-    "pg": "^8.13.1"
+    "kysely": "^0.29.5"
   },
   "devDependencies": {
     "@eslint/js": "^9.18.0",
     "@types/better-sqlite3": "^7.6.12",
     "@types/node": "^22.10.7",
-    "@types/pg": "^8.11.10",
     "@vitest/coverage-v8": "^3.2.7",
     "eslint": "^9.18.0",
     "tsx": "^4.19.2",

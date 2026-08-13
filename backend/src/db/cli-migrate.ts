@@ -8,11 +8,11 @@ const direction = process.argv[2] ?? 'up';
 
 try {
   if (direction === 'down') {
-    await migrateDown(handle.db, handle.engine);
-    console.log(`Rolled back one migration on ${handle.engine}.`);
+    await migrateDown(handle.db);
+    console.log(`Rolled back one migration on ${config.sqliteFile}.`);
   } else {
-    await migrateToLatest(handle.db, handle.engine);
-    console.log(`Schema is up to date on ${handle.engine}.`);
+    await migrateToLatest(handle.db);
+    console.log(`Schema is up to date on ${config.sqliteFile}.`);
   }
 } catch (error) {
   console.error(error instanceof Error ? error.message : error);

@@ -19,7 +19,7 @@ if (config.profile !== 'local-preview') {
   process.exit(1);
 }
 
-await migrateToLatest(handle.db, handle.engine);
+await migrateToLatest(handle.db);
 const services = createServices(config, handle.db, new ConsoleMailer(() => {}));
 
 const existing = await handle.db.selectFrom('users').select('id').limit(1).executeTakeFirst();
@@ -208,9 +208,9 @@ const seeds: Seed[] = [
     status: 'draft',
   },
   {
-    title: 'Portable across database engines',
+    title: 'Database location is configuration, not code',
     statement:
-      'The active database engine shall be selected by deployment configuration alone, with no code change and no separate build artifact.',
+      'The database file location shall be selected by deployment configuration alone, with no code change and no separate build artifact.',
     type: 'technical',
     priority: 'must',
     categoryId: quality,

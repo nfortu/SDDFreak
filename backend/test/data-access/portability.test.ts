@@ -1,9 +1,10 @@
 import { sql } from 'kysely';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { createSqliteDb } from '../../src/db/connection.js';
+import { migrateDown, migrateToLatest } from '../../src/db/migrator.js';
 import {
   type Actor,
   type TestContext,
-  TEST_ENGINE,
   as,
   createActor,
   createProject,
@@ -13,11 +14,12 @@ import {
 } from '../helpers.js';
 
 /**
- * TR-DB-006: this suite is the one that runs against both engines. It asserts
- * the behaviour §8.4 promises will be identical, so a divergence shows up here
- * rather than in production.
+ * §8.4: the storage-level promises. These assert the representations of
+ * §8.4.1 at the row level rather than through the domain, so a change of
+ * physical shape — the one thing a future engine swap (§2.3) would disturb —
+ * fails here rather than in production.
  */
-describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
+describe('data access on SQLite (§8.4)', () => {
   let ctx: TestContext;
   let owner: Actor;
   let projectId: string;
@@ -150,7 +152,7 @@ describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
     expect(clash.statusCode).toBe(409);
   });
 
-  it('TR-DB-012: whole-word search behaves the same on either engine', async () => {
+  it('TR-DB-012: search matches whole words over title, statement, and rationale', async () => {
     const project = await createProject(ctx, owner, uniqueKey('FT'));
     await createRequirement(ctx, owner, project.id, {
       title: 'Portable search',
@@ -169,7 +171,7 @@ describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
       ).json().total;
 
     expect(await search('supercalifragilistic')).toBe(1);
-    expect(await search('SUPERCALIFRAGILISTIC')).toBe(1); // case-insensitive on both
+    expect(await search('SUPERCALIFRAGILISTIC')).toBe(1); // case-insensitive
     expect(await search('portable')).toBe(1); // title
     expect(await search('searching')).toBe(1); // rationale
     expect(await search('supercalifragilistic retrieval')).toBe(1); // AND
@@ -191,18 +193,11 @@ describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
   });
 
   it('NFR-PERF-102: the filter and sort columns of §6.7 are indexed', async () => {
-    const indexed =
-      TEST_ENGINE === 'sqlite'
-        ? (
-            await sql<{ name: string }>`
-              select name from sqlite_master where type = 'index' and tbl_name = 'requirements'
-            `.execute(ctx.services.db)
-          ).rows.map((r) => r.name)
-        : (
-            await sql<{ indexname: string }>`
-              select indexname from pg_indexes where tablename = 'requirements'
-            `.execute(ctx.services.db)
-          ).rows.map((r) => r.indexname);
+    const indexed = (
+      await sql<{ name: string }>`
+        select name from sqlite_master where type = 'index' and tbl_name = 'requirements'
+      `.execute(ctx.services.db)
+    ).rows.map((r) => r.name);
 
     for (const expected of [
       'requirements_project_status_idx',
@@ -221,7 +216,7 @@ describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
     const response = await ctx.app.inject({ method: 'GET', url: '/api/meta' });
 
     expect(response.statusCode).toBe(200);
-    expect(response.json().engine).toBe(TEST_ENGINE);
+    expect(response.json().engine).toBe('sqlite');
     expect(response.json().profile).toBe('local-preview');
     expect(response.json().isPreview).toBe(true);
   });
@@ -232,6 +227,40 @@ describe(`data access on ${TEST_ENGINE} (§8.4)`, () => {
     expect(response.statusCode).toBe(200);
     expect(response.json().status).toBe('ok');
     expect(response.json().checks.database).toBe('ok');
-    expect(response.json().engine).toBe(TEST_ENGINE);
+    expect(response.json().engine).toBe('sqlite');
+  });
+});
+
+/** TR-DB-005 with NFR-MNT-006: one migration source, applied and reversible. */
+describe('migrations (§8.4)', () => {
+  it('TR-DB-005: applies from empty and rolls every migration back', async () => {
+    const handle = createSqliteDb(':memory:');
+
+    try {
+      await migrateToLatest(handle.db);
+
+      const applied = async () =>
+        (
+          await sql<{ name: string }>`
+            select name from sqlite_master where type in ('table', 'view')
+          `.execute(handle.db)
+        ).rows.map((r) => r.name);
+
+      expect(await applied()).toContain('requirements');
+
+      // Down to nothing: two migrations, so two steps. What survives is the
+      // migrator's own bookkeeping, not application schema.
+      await migrateDown(handle.db);
+      await migrateDown(handle.db);
+
+      const remaining = (await applied()).filter((name) => !name.startsWith('kysely_'));
+      expect(remaining).toEqual([]);
+
+      // Reversible means re-appliable, not merely droppable.
+      await migrateToLatest(handle.db);
+      expect(await applied()).toContain('requirement_search');
+    } finally {
+      await handle.close();
+    }
   });
 });

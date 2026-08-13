@@ -1,9 +1,9 @@
 import type { Generated } from 'kysely';
 
 /**
- * Physical schema. Representations follow §8.4.1 so the same value round-trips
- * identically under SQLite and Postgres: UUIDs as canonical text, timestamps as
- * ISO-8601 UTC text, booleans as 0/1, JSON as text.
+ * Physical schema. Representations follow §8.4.1, which avoids types only one
+ * engine has: UUIDs as canonical text, timestamps as ISO-8601 UTC text,
+ * booleans as 0/1, JSON as text.
  *
  * §4 remains the domain model; this is only how it is stored.
  */
@@ -138,9 +138,9 @@ export interface AuditEventsTable {
 }
 
 /**
- * TR-DB-011: this table is the one accepted divergence. Under SQLite it is an
- * FTS5 virtual table; under Postgres a plain table carrying a generated
- * tsvector. Both expose the same columns, so only the WHERE clause differs.
+ * TR-DB-011: an FTS5 virtual table. It is the only SQLite-specific object in
+ * the schema, which is what TR-DB-015 asks for — the columns here are the
+ * contract, the index type behind them is not.
  */
 export interface RequirementSearchTable {
   requirement_id: string;

@@ -13,21 +13,6 @@ jobs:
       run:
         working-directory: backend
 
-    # TR-DB-006: the data-access suite additionally runs against PostgreSQL.
-    services:
-      postgres:
-        image: postgres:17-alpine
-        env:
-          POSTGRES_USER: sddfreak
-          POSTGRES_PASSWORD: sddfreak
-          POSTGRES_DB: sddfreak
-        ports: ['5432:5432']
-        options: >-
-          --health-cmd "pg_isready -U sddfreak"
-          --health-interval 5s
-          --health-timeout 3s
-          --health-retries 10
-
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -40,13 +25,8 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
 
-      # The full suite on SQLite (TR-DB-006, first half).
+      # TR-DB-006: the full suite, on the one engine there is.
       - run: npm test
-
-      # The data-access suite on PostgreSQL (TR-DB-006, second half).
-      - run: npm run test:pg
-        env:
-          DATABASE_URL: postgres://sddfreak:sddfreak@localhost:5432/sddfreak
 
       # NFR-SEC-009
       - run: npm audit --audit-level=high

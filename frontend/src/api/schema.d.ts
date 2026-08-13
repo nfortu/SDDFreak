@@ -63,7 +63,8 @@ export interface paths {
                         "application/json": {
                             profile: "local-preview" | "deployed";
                             isPreview: boolean;
-                            engine: "sqlite" | "postgres";
+                            /** @enum {string} */
+                            engine: "sqlite";
                             spec: string;
                         };
                     };

@@ -1,6 +1,5 @@
 import type { Kysely } from 'kysely';
 import { type Migration, type MigrationProvider, Migrator } from 'kysely/migration';
-import type { DbEngine } from '../config.js';
 import { createMigrations } from './migrations.js';
 import type { Database } from './types.js';
 
@@ -12,13 +11,13 @@ class StaticMigrationProvider implements MigrationProvider {
 }
 
 /**
- * TR-DB-005: the same migration source runs against both engines. NFR-MNT-006:
- * migrations are versioned and reversible.
+ * TR-DB-005: one committed migration source. NFR-MNT-006: migrations are
+ * versioned and reversible.
  */
-export async function migrateToLatest(db: Kysely<Database>, engine: DbEngine): Promise<void> {
+export async function migrateToLatest(db: Kysely<Database>): Promise<void> {
   const migrator = new Migrator({
     db,
-    provider: new StaticMigrationProvider(createMigrations(engine)),
+    provider: new StaticMigrationProvider(createMigrations()),
   });
 
   const { error, results } = await migrator.migrateToLatest();
@@ -31,10 +30,10 @@ export async function migrateToLatest(db: Kysely<Database>, engine: DbEngine): P
   }
 }
 
-export async function migrateDown(db: Kysely<Database>, engine: DbEngine): Promise<void> {
+export async function migrateDown(db: Kysely<Database>): Promise<void> {
   const migrator = new Migrator({
     db,
-    provider: new StaticMigrationProvider(createMigrations(engine)),
+    provider: new StaticMigrationProvider(createMigrations()),
   });
   const { error } = await migrator.migrateDown();
   if (error) throw new Error(`Rollback failed: ${String(error)}`);

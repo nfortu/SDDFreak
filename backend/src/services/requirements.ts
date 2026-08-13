@@ -191,9 +191,8 @@ export class RequirementsService {
 
   /**
    * FR-REQ-002 and INV-02. The counter is bumped and read in one statement, so
-   * two concurrent creates cannot be handed the same number. RETURNING is
-   * available on both engines (SQLite since 3.35, Postgres always), which keeps
-   * this out of the engine-divergence list.
+   * two concurrent creates cannot be handed the same number. RETURNING has been
+   * available since SQLite 3.35, so this needs no engine-specific path.
    */
   private async allocateKey(trx: Kysely<Database>, projectId: string): Promise<string> {
     const project = await trx

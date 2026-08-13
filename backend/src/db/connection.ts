@@ -1,33 +1,18 @@
 import { mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
 import BetterSqlite3 from 'better-sqlite3';
-import { Kysely, PostgresDialect, SqliteDialect } from 'kysely';
-import pg from 'pg';
-import type { Config, DbEngine } from '../config.js';
+import { Kysely, SqliteDialect } from 'kysely';
+import type { Config } from '../config.js';
 import type { Database } from './types.js';
 
 export interface DbHandle {
   readonly db: Kysely<Database>;
-  readonly engine: DbEngine;
   close(): Promise<void>;
 }
 
-/**
- * Postgres returns `bigint` and `numeric` as strings to avoid precision loss.
- * Our integer columns are all small counters, and SQLite hands them back as
- * numbers, so we parse them here to keep `version` and `sort_order` the same
- * type under both engines (§8.4.1).
- */
-function configurePgTypeParsers(): void {
-  pg.types.setTypeParser(pg.types.builtins.INT8, (value: string) => Number(value));
-  pg.types.setTypeParser(pg.types.builtins.NUMERIC, (value: string) => Number(value));
-}
-
+/** TR-DB-014: the file comes from configuration; nothing else varies. */
 export function createDb(config: Config): DbHandle {
-  if (config.engine === 'sqlite') {
-    return createSqliteDb(config.sqliteFile);
-  }
-  return createPostgresDb(config.databaseUrl!);
+  return createSqliteDb(config.sqliteFile);
 }
 
 export function createSqliteDb(file: string): DbHandle {
@@ -38,8 +23,8 @@ export function createSqliteDb(file: string): DbHandle {
   const sqlite = new BetterSqlite3(file);
 
   // TR-DB-009: foreign keys are off by default in SQLite and are set per
-  // connection. Without this, referential integrity silently differs between
-  // the local preview and a deployed installation.
+  // connection. Without this, referential integrity is left to application
+  // code, which is exactly what the constraint exists to avoid.
   sqlite.pragma('foreign_keys = ON');
 
   // TR-DB-010: WAL plus a busy timeout, so a concurrent reader is never handed
@@ -56,24 +41,6 @@ export function createSqliteDb(file: string): DbHandle {
 
   return {
     db,
-    engine: 'sqlite',
-    async close() {
-      await db.destroy();
-    },
-  };
-}
-
-export function createPostgresDb(connectionString: string): DbHandle {
-  configurePgTypeParsers();
-  const pool = new pg.Pool({ connectionString, max: 10 });
-
-  const db = new Kysely<Database>({
-    dialect: new PostgresDialect({ pool }),
-  });
-
-  return {
-    db,
-    engine: 'postgres',
     async close() {
       await db.destroy();
     },
