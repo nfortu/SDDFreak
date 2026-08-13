@@ -1,0 +1,40 @@
+@import 'tailwindcss';
+
+/* TR-FE-003: Tailwind is the styling system; these are design tokens for it,
+   not a second framework. */
+@theme {
+  --color-surface: oklch(99% 0.003 250);
+  --color-surface-raised: oklch(100% 0 0);
+  --color-border-subtle: oklch(91% 0.006 250);
+  --color-ink: oklch(24% 0.02 265);
+  --color-ink-muted: oklch(52% 0.015 265);
+  --color-accent: oklch(52% 0.16 265);
+  --color-accent-soft: oklch(95% 0.03 265);
+}
+
+@layer base {
+  :root {
+    color-scheme: light dark;
+  }
+
+  body {
+    @apply bg-surface text-ink antialiased;
+  }
+
+  /* NFR-USE-002: keyboard users must be able to see where they are. */
+  :focus-visible {
+    @apply outline-2 outline-offset-2 outline-accent;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  @theme {
+    --color-surface: oklch(21% 0.015 265);
+    --color-surface-raised: oklch(25% 0.017 265);
+    --color-border-subtle: oklch(32% 0.02 265);
+    --color-ink: oklch(95% 0.008 250);
+    --color-ink-muted: oklch(72% 0.015 260);
+    --color-accent: oklch(72% 0.14 265);
+    --color-accent-soft: oklch(30% 0.05 265);
+  }
+}

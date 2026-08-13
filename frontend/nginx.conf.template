@@ -1,0 +1,36 @@
+server {
+    listen 8080;
+    server_name _;
+
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # NFR-SEC-006 adjacent: do not advertise the server build.
+    server_tokens off;
+
+    # TR-FE-004 and TR-FE-007: the browser calls the API same-origin, and the
+    # upstream is substituted from BACKEND_ORIGIN at container start rather
+    # than baked into the bundle.
+    location /api/ {
+        proxy_pass ${BACKEND_ORIGIN};
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Origin $scheme://$http_host;
+    }
+
+    location /health {
+        proxy_pass ${BACKEND_ORIGIN};
+    }
+
+    # A single-page app: unknown paths are routes, not missing files.
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|woff2?|png|svg|jpg|jpeg|gif|ico)$ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+}

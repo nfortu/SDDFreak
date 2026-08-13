@@ -1,0 +1,53 @@
+{
+  "name": "@sddfreak/backend",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "SPEC-001 Requirements Management System — backend (TR-BE-001)",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.build.json",
+    "start": "node dist/index.js",
+    "migrate": "tsx src/db/cli-migrate.ts",
+    "seed": "tsx src/seed.ts",
+    "openapi": "tsx src/openapi-emit.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:pg": "DB_ENGINE=postgres vitest run test/data-access",
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint src test"
+  },
+  "dependencies": {
+    "@fastify/cookie": "^11.0.2",
+    "@fastify/cors": "^10.0.2",
+    "@fastify/swagger": "^9.4.2",
+    "@fastify/type-provider-typebox": "^5.1.0",
+    "@node-rs/argon2": "^2.0.2",
+    "@sinclair/typebox": "^0.34.14",
+    "ajv": "^8.20.0",
+    "ajv-formats": "^3.0.1",
+    "better-sqlite3": "^11.8.1",
+    "fastify": "^5.2.1",
+    "kysely": "^0.29.5",
+    "pg": "^8.13.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.18.0",
+    "@types/better-sqlite3": "^7.6.12",
+    "@types/node": "^22.10.7",
+    "@types/pg": "^8.11.10",
+    "@vitest/coverage-v8": "^3.2.7",
+    "eslint": "^9.18.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.20.0",
+    "vitest": "^3.0.2"
+  },
+  "allowScripts": {
+    "better-sqlite3@11.10.0": true,
+    "esbuild@0.28.2": true
+  }
+}
