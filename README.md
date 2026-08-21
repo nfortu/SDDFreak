@@ -2,7 +2,7 @@
 
 A requirements management system, built to its own specification:
 [`specs/001-requirements-management-core.md`](specs/001-requirements-management-core.md)
-(SPEC-001 v0.5).
+(SPEC-001 v0.6).
 
 Requirements carry stable keys, a category hierarchy, tags, decomposition,
 immutable revisions, and an append-only audit log — behind per-project roles.

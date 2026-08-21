@@ -16,6 +16,7 @@ import {
   Banner,
   Button,
   Card,
+  Disclosure,
   EmptyState,
   Field,
   Input,
@@ -30,7 +31,10 @@ import {
 
 const PAGE_SIZE = 25;
 
-/** FR-SRCH-002/003/004: the filter state lives in the URL so a view is shareable. */
+/** NFR-USE-008: the facet dimensions kept behind the collapsed "Filters" disclosure. */
+const FACET_KEYS = ['type', 'status', 'priority'] as const;
+
+/** FR-SRCH-002/003/004, FR-SRCH-010: the filter state lives in the URL so a view is shareable. */
 function filtersFromParams(params: URLSearchParams): RequirementFilters {
   const list = (key: string) => params.getAll(key);
   return {
@@ -84,6 +88,16 @@ export function ProjectPage() {
     next.delete('offset');
     setParams(next, { replace: true });
   };
+
+  const clearFacets = () => {
+    const next = new URLSearchParams(params);
+    for (const key of FACET_KEYS) next.delete(key);
+    next.delete('offset');
+    setParams(next, { replace: true });
+  };
+
+  const activeFacetCount =
+    (filters.type?.length ?? 0) + (filters.status?.length ?? 0) + (filters.priority?.length ?? 0);
 
   const loadRequirements = useCallback(async () => {
     setError(null);
@@ -250,24 +264,43 @@ export function ProjectPage() {
           </div>
         </div>
 
-        <FacetRow
-          label="Type"
-          options={TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
-          active={filters.type ?? []}
-          onToggle={(value) => toggleMulti('type', value)}
-        />
-        <FacetRow
-          label="Status"
-          options={STATUSES.map((s) => ({ value: s, label: s }))}
-          active={filters.status ?? []}
-          onToggle={(value) => toggleMulti('status', value)}
-        />
-        <FacetRow
-          label="Priority"
-          options={PRIORITIES.map((p) => ({ value: p, label: p }))}
-          active={filters.priority ?? []}
-          onToggle={(value) => toggleMulti('priority', value)}
-        />
+        <Disclosure
+          label="Filters"
+          defaultOpen={activeFacetCount > 0}
+          badge={
+            activeFacetCount > 0 && (
+              <span className="rounded-full bg-accent px-1.5 py-0.5 text-[11px] font-medium text-white">
+                {activeFacetCount} active
+              </span>
+            )
+          }
+          actions={
+            activeFacetCount > 0 && (
+              <Button variant="ghost" size="sm" onClick={clearFacets}>
+                Clear filters
+              </Button>
+            )
+          }
+        >
+          <FacetRow
+            label="Type"
+            options={TYPES.map((t) => ({ value: t, label: TYPE_LABELS[t] }))}
+            active={filters.type ?? []}
+            onToggle={(value) => toggleMulti('type', value)}
+          />
+          <FacetRow
+            label="Status"
+            options={STATUSES.map((s) => ({ value: s, label: s }))}
+            active={filters.status ?? []}
+            onToggle={(value) => toggleMulti('status', value)}
+          />
+          <FacetRow
+            label="Priority"
+            options={PRIORITIES.map((p) => ({ value: p, label: p }))}
+            active={filters.priority ?? []}
+            onToggle={(value) => toggleMulti('priority', value)}
+          />
+        </Disclosure>
 
         {showCreate && canEdit && (
           <CreateRequirementForm
