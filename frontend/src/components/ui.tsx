@@ -1,3 +1,4 @@
+import { useId, useState } from 'react';
 import type {
   ButtonHTMLAttributes,
   InputHTMLAttributes,
@@ -173,6 +174,73 @@ export function Spinner({ label = 'Loading' }: { label?: string }) {
     <div role="status" className="flex items-center gap-2 text-sm text-ink-muted">
       <span className="size-3 animate-spin rounded-full border-2 border-current border-t-transparent" />
       {label}
+    </div>
+  );
+}
+
+/**
+ * NFR-USE-002/008: a section that hides secondary controls behind a toggle. The whole
+ * header row is the toggle target — the label button carries a stretched overlay, so the
+ * row is one keyboard-reachable control rather than a strip of separate hit areas.
+ * `actions` sits above that overlay and stays independently clickable; `badge` keeps
+ * whatever is hidden inside discoverable while collapsed.
+ */
+export function Disclosure({
+  label,
+  badge,
+  defaultOpen = false,
+  actions,
+  children,
+}: {
+  label: string;
+  badge?: ReactNode;
+  defaultOpen?: boolean;
+  actions?: ReactNode;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  const contentId = useId();
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-border-subtle bg-surface-raised">
+      <div className="relative flex items-center gap-2 px-3 py-2 hover:bg-accent-soft">
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls={contentId}
+          onClick={() => setOpen((value) => !value)}
+          className={cx(
+            'cursor-pointer text-xs font-semibold uppercase tracking-wide text-ink-muted hover:text-ink',
+            "after:absolute after:inset-0 after:content-['']",
+          )}
+        >
+          {label}
+        </button>
+        {badge}
+        <div className="ml-auto flex items-center gap-2">
+          {actions && <div className="relative z-10">{actions}</div>}
+          <svg
+            viewBox="0 0 12 12"
+            aria-hidden="true"
+            className={cx(
+              'size-3 shrink-0 text-ink-muted transition-transform',
+              open && 'rotate-180',
+            )}
+          >
+            <path
+              d="M2.5 4.5 6 8l3.5-3.5"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="1.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            />
+          </svg>
+        </div>
+      </div>
+      <div id={contentId} hidden={!open} className="space-y-2 border-t border-border-subtle px-3 py-3">
+        {children}
+      </div>
     </div>
   );
 }

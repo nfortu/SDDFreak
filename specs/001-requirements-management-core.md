@@ -1,9 +1,9 @@
 # SPEC-001 — Requirements Management System: Core
 
 - **Status:** draft
-- **Version:** 0.5
+- **Version:** 0.6
 - **Created:** 2026-08-12
-- **Last updated:** 2026-08-13
+- **Last updated:** 2026-08-20
 - **Supersedes:** —
 - **Blocking questions:** none. One open item (Q17, team size / delivery date) affects sequencing only, not content.
 
@@ -380,6 +380,7 @@ exposed to untrusted bulk probing (see NFR-SEC-008).*
 | **FR-SRCH-007** | The system shall return requirements as a tree reflecting the category hierarchy and, within it, the parent–child decomposition. | T |
 | **FR-SRCH-008** | The system shall exclude soft-deleted requirements from listings and search unless the caller explicitly requests them. | T |
 | **FR-SRCH-009** | The system shall export the current filtered result set as CSV and as JSON. | T |
+| **FR-SRCH-010** | The user interface shall carry the active filters, sort, and search term in the URL, so that a filtered view can be shared and restored by that URL alone. | D |
 
 ### 6.8 History and audit
 
@@ -466,6 +467,8 @@ often the only record of a decision.*
 | **NFR-USE-005** | A validation error shall identify the offending field and state how to correct it. | D |
 | **NFR-USE-006** | Unsaved edits shall survive an accidental navigation away from an edit form. | D |
 | **NFR-USE-007** | A version conflict (FR-REQ-008) shall be presented to the user with both versions and without discarding their unsaved input. | D |
+| **NFR-USE-008** | Secondary controls that are not needed to read the list — the type, status, and priority facets of FR-SRCH-002 — shall be presented in a collapsible section, collapsed on first view, so the default view is not cluttered by them. The section's whole header shall act as the expand/collapse control, and shall carry a right-aligned indicator of its current state. | D |
+| **NFR-USE-009** | While such a section is collapsed, the interface shall state how many filters inside it are active and offer a single control that clears them. A view opened from a URL that already carries those filters (FR-SRCH-010) shall show the section expanded. | D |
 
 ### 7.6 Maintainability and observability
 
@@ -688,6 +691,8 @@ Satisfied when all of the following hold:
 - [ ] Tags normalize to lowercase and deduplicate within a project.
 - [ ] A bulk change over a selection applies to all of them or to none.
 - [ ] The list can be filtered by every dimension in FR-SRCH-002, including category-with-descendants, and sorted by every field in FR-SRCH-004.
+- [ ] The type, status, and priority facets start collapsed on a fresh view, expand and collapse from a click anywhere on the section header as well as by keyboard alone, the right-aligned indicator reflects the current state, and the toggle reports that state to assistive technology (NFR-USE-002, NFR-USE-008).
+- [ ] Opening a URL that already carries type, status, or priority filters shows the facet section expanded, labelled with the active count, and clearing it removes exactly those filters from the URL (NFR-USE-009, FR-SRCH-010).
 - [ ] Full-text search returns a requirement by a word from its statement, and never returns one from a project the actor cannot read.
 - [ ] Every update writes a revision; any two revisions can be diffed; a revert produces a new revision rather than removing one.
 - [ ] The audit log records every event type in §4.10 and offers no mutation path.
