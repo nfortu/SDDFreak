@@ -1,3 +1,6 @@
 .DS_Store
 node_modules/
 *.log
+
+# Claude Code local overrides — the shared command lives in .claude/commands/
+.claude/settings.local.json
