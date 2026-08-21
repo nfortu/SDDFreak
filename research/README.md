@@ -4,9 +4,8 @@ One note per Claude Code session, so we can look back at how this repo actually
 gets built and get better at driving it.
 
 These are **not** project documentation — the spec is the source of truth for what
-the system does, and `backend/src/learnings.md` collects durable lessons. A note
-here is a log entry: what was asked, what changed, what it cost, and what we would
-do differently next time.
+the system does. A note here is a log entry: what was asked, what changed, what it
+cost, and what we would do differently next time.
 
 ## Convention
 

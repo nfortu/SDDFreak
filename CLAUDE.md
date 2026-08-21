@@ -16,8 +16,7 @@ A behavior change is a spec change plus the code that satisfies it — in that o
 - Add or amend the requirement in `specs/`, bump the version and **Last updated** in the
   header, and add an acceptance-checklist item in the closing section.
 - Then write the code. Reference the requirement ID in a comment only where the *why*
-  is not obvious from the code — do not sprinkle IDs across every function
-  (`backend/src/learnings.md`).
+  is not obvious from the code — do not sprinkle IDs across every function.
 - Propagate: the spec version appears in `README.md`; `backend/openapi.json` is generated
   (`npm run openapi`) and CI fails on drift; `frontend/src/api/schema.d.ts` is generated
   from it (`npm run gen:api`).
